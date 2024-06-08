@@ -3,6 +3,7 @@ module Wrapper
 import Data.Bits
 import System
 import System.FFI
+import Sys.Clang
 
 clib : String -> String
 clib str = "C:clang_" ++ str ++ ",libclang"
@@ -23,55 +24,9 @@ CXTranslationUnit : Type
 CXTranslationUnit = AnyPtr
 
 public export
-data ChildVisitResult
-   = Break
-   | Continue
-   | Recurse
-   | Invalid
-
-public export
-CXChildVisitResult : Type
-CXChildVisitResult = Int
-
-public export
-data CursorKind
-   = UnexposedDecl
-   | StructDecl
-   | UnionDecl
-   | ClassDecl
-   | EnumDecl
-   | FieldDecl
-   | EnumConstantDecl
-   | FunctionDecl
-   | VarDecl
-   | ParmDecl
-   | TypedefDecl
-   | Cursor_Invalid
-
-public export
-CXCursorKind : Type
-CXCursorKind = Int
-
-public export
-data TypeKind
-   = TK_Int
-   | Pointer
-   | BlockPointer
-   | LValueReference
-   | RValueReference
-   | Record
-   | Enum
-   | Elaborated
-   | TypeInvalid
-
-public export
-CXTypeKind : Type
-CXTypeKind = Int
-
-public export
 CXCursor : Type
 CXCursor = Struct "CXCursor" [
-      ("kind", CXCursorKind),
+      ("kind", Prim_CXCursorKind),
       ("xdata", Int),
       ("data", AnyPtr)
    ]
@@ -79,7 +34,7 @@ CXCursor = Struct "CXCursor" [
 public export
 CXType : Type
 CXType = Struct "CXType" [
-      ("kind", CXTypeKind),
+      ("kind", Prim_CXTypeKind),
       ("data", AnyPtr)
    ]
 
@@ -100,111 +55,19 @@ SchemeObjPtr = AnyPtr
 
 public export
 CXCursorVisitor : Type -> Type
-CXCursorVisitor t = CXCursor -> CXCursor -> t -> IO (ChildVisitResult, t)
+CXCursorVisitor t = CXCursor -> CXCursor -> t -> IO (CXChildVisitResult, t)
 
 public export
 CXCursorVisitorWrapper : Type
-CXCursorVisitorWrapper = CXCursor -> CXCursor -> SchemeObjPtr -> IO CXChildVisitResult
+CXCursorVisitorWrapper = CXCursor -> CXCursor -> SchemeObjPtr -> IO Prim_CXChildVisitResult
 
 public export
 PrimCXCursorVisitorWrapper : Type
-PrimCXCursorVisitorWrapper = CXCursor -> CXCursor -> SchemeObjPtr -> PrimIO CXChildVisitResult
+PrimCXCursorVisitorWrapper = CXCursor -> CXCursor -> SchemeObjPtr -> PrimIO Prim_CXChildVisitResult
 
 public export
 WrappedCXCursorVisitor : Type
 WrappedCXCursorVisitor = AnyPtr
-
--- Implementations
-public export
-%foreign (wrapper "toRealChildVisitResult")
-toRealChildVisitResult : Int -> CXChildVisitResult
-public export
-%foreign (wrapper "fromRealChildVisitResult")
-fromRealChildVisitResult : CXChildVisitResult -> Int
-
-public export
-Cast ChildVisitResult CXChildVisitResult where
-   cast Break    = toRealChildVisitResult 0
-   cast Continue = toRealChildVisitResult 1
-   cast Recurse  = toRealChildVisitResult 2
-   cast Invalid  = toRealChildVisitResult 3
-
-public export
-Cast CXChildVisitResult ChildVisitResult where
-   cast x = case (fromRealChildVisitResult x) of
-                 0 => Break
-                 1 => Continue
-                 2 => Recurse
-                 _ => Invalid
-
-public export
-%foreign (wrapper "toRealCursorKind")
-toRealCursorKind : Int -> CXCursorKind
-%foreign (wrapper "fromRealCursorKind")
-fromRealCursorKind : CXCursorKind -> Int
-
-public export
-Cast CursorKind CXCursorKind where
-   cast Cursor_Invalid   = toRealCursorKind 0
-   cast UnexposedDecl    = toRealCursorKind 1
-   cast StructDecl       = toRealCursorKind 2
-   cast UnionDecl        = toRealCursorKind 3
-   cast ClassDecl        = toRealCursorKind 4
-   cast EnumDecl         = toRealCursorKind 5
-   cast FieldDecl        = toRealCursorKind 6
-   cast EnumConstantDecl = toRealCursorKind 7
-   cast FunctionDecl     = toRealCursorKind 8
-   cast VarDecl          = toRealCursorKind 9
-   cast ParmDecl         = toRealCursorKind 10
-   cast TypedefDecl      = toRealCursorKind 20
-
-public export
-Cast CXCursorKind CursorKind where
-   cast x = case (fromRealCursorKind x) of
-                 1  => UnexposedDecl
-                 2  => StructDecl
-                 3  => UnionDecl
-                 4  => ClassDecl
-                 5  => EnumDecl
-                 6  => FieldDecl
-                 7  => EnumConstantDecl
-                 8  => FunctionDecl
-                 9  => VarDecl
-                 10 => ParmDecl
-                 20 => TypedefDecl
-                 _  => Cursor_Invalid
-
-public export
-%foreign (wrapper "toRealTypeKind")
-toRealTypeKind : Int -> CXTypeKind
-public export
-%foreign (wrapper "fromRealTypeKind")
-fromRealTypeKind : CXTypeKind -> Int
-
-public export
-Cast TypeKind CXTypeKind where
-   cast TK_Int          = toRealTypeKind 17
-   cast Pointer         = toRealTypeKind 101
-   cast BlockPointer    = toRealTypeKind 102
-   cast LValueReference = toRealTypeKind 103
-   cast RValueReference = toRealTypeKind 104
-   cast Record          = toRealTypeKind 105
-   cast Enum            = toRealTypeKind 106
-   cast Elaborated      = toRealTypeKind 119
-   cast TypeInvalid     = toRealTypeKind 10000
-
-public export
-Cast CXTypeKind TypeKind where
-   cast x = case (fromRealTypeKind x) of
-                 17  => TK_Int
-                 101 => Pointer
-                 102 => BlockPointer
-                 103 => LValueReference
-                 104 => RValueReference
-                 105 => Record
-                 106 => Enum
-                 119 => Elaborated
-                 _   => TypeInvalid
 
 -- Foreign functions
 
@@ -279,9 +142,9 @@ getTypedefDeclUnderlyingType : HasIO io => CXCursor -> io CXType
 getTypedefDeclUnderlyingType x = primIO $ (prim_getTypedefDeclUnderlyingType x)
 
 %foreign (wrapper "getCursorKindSpelling")
-prim_getCursorKindSpelling : CXCursorKind -> PrimIO CXString
+prim_getCursorKindSpelling : Prim_CXCursorKind -> PrimIO CXString
 public export
-getCursorKindSpelling : HasIO io => CursorKind -> io CXString
+getCursorKindSpelling : HasIO io => CXCursorKind -> io CXString
 getCursorKindSpelling i = primIO $ (prim_getCursorKindSpelling (cast i))
 
 %foreign (wrapper "getCursorSpelling")
@@ -291,9 +154,9 @@ getCursorSpelling : HasIO io => CXCursor -> io CXString
 getCursorSpelling i = primIO $ (prim_getCursorSpelling (cast i))
 
 %foreign (wrapper "getTypeKindSpelling")
-prim_getTypeKindSpelling : CXTypeKind -> PrimIO CXString
+prim_getTypeKindSpelling : Prim_CXTypeKind -> PrimIO CXString
 public export
-getTypeKindSpelling : HasIO io => TypeKind -> io CXString
+getTypeKindSpelling : HasIO io => CXTypeKind -> io CXString
 getTypeKindSpelling i = primIO $ (prim_getTypeKindSpelling (cast i))
 
 %foreign (wrapper "getTypeSpelling")
@@ -370,7 +233,7 @@ wrapVisitor visitor = (\u, v, w => toPrim $ nativeVisit u v w)
             pure (cast result)
 
 %foreign (wrapper "visitChildren")
-prim_visitChildren : CXCursor -> PrimCXCursorVisitorWrapper -> SchemeObjPtr -> PrimIO CXChildVisitResult
+prim_visitChildren : CXCursor -> PrimCXCursorVisitorWrapper -> SchemeObjPtr -> PrimIO Prim_CXChildVisitResult
 public export
 visitChildren : HasIO io => {t: _} ->  CXCursor -> CXCursorVisitor t -> t -> io (CXChildVisitResult, t)
 visitChildren cursor callback dat =
@@ -382,4 +245,4 @@ visitChildren cursor callback dat =
       dat <- fromSchemeObjPtr dataptr
       _ <- unlockObject dat
       let dat = believe_me dat
-      pure (result, dat)
+      pure (cast result, dat)

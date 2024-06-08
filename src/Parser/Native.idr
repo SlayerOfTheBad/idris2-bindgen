@@ -4,6 +4,7 @@ import Parser.Common
 import Data.List1
 import Data.String
 import System.FFI
+import Sys.Clang
 import Wrapper
 
 getName : HasIO io => CXCursor -> io String
@@ -30,7 +31,7 @@ parseEnumFieldsVisitor : CXCursorVisitor (List EnumVariant)
 parseEnumFieldsVisitor cursor _ fields =
   do name <- getName cursor
      value <- getEnumConstantDeclUnsignedValue cursor
-     pure (Continue, (name, value) :: fields)
+     pure (CXChildVisit_Continue, (name, value) :: fields)
 
 parseEnumFields : HasIO io => (cursor : CXCursor) -> io (List EnumVariant)
 parseEnumFields cursor =
@@ -54,14 +55,14 @@ parseEnum cursor =
           False => pure enum
           True => pure $ Anonymous enum
 
-parseCursor : HasIO io => AST -> CXCursor -> CursorKind -> io (ChildVisitResult, AST)
-parseCursor ast cursor EnumDecl = parseEnum cursor >>= \node => pure (Continue, node ?? ast)
-parseCursor ast cursor _ = pure (Continue, ast)
+parseCursor : HasIO io => AST -> CXCursor -> CXCursorKind -> io (CXChildVisitResult, AST)
+parseCursor ast cursor CXCursor_EnumDecl = parseEnum cursor >>= \node => pure (CXChildVisit_Continue, node ?? ast)
+parseCursor ast cursor _ = pure (CXChildVisit_Continue, ast)
 
 visitor : CXCursorVisitor AST
 visitor cursor _ ast = 
-  do let nativeKind : CXCursorKind = getField cursor "kind"
-     let kind : CursorKind = cast nativeKind
+  do let nativeKind = getField cursor "kind"
+     let kind = fromPrimitive nativeKind
      parseCursor ast cursor kind
 
 export
